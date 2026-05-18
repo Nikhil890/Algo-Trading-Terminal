@@ -115,7 +115,7 @@ export default function Chart() {
     }
 
     fetch(
-      `http://127.0.0.1:8000/nifty-history?interval=${timeframe}&period=${period}`
+      `https://glowing-system-gppw4p9x66vcwxqr-8000.app.github.dev/nifty-history?interval=${timeframe}&period=${period}`
     )
 
       .then((response) =>
