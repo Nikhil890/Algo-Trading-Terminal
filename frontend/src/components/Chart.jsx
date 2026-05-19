@@ -1,23 +1,20 @@
 import {
   useEffect,
   useRef,
-  useState
+  useState,
 } from "react";
 
 import {
   createChart,
-  CandlestickSeries
+  CandlestickSeries,
 } from "lightweight-charts";
+
+const API =
+  "https://algo-trading-terminal-production.up.railway.app";
 
 export default function Chart() {
 
   const chartContainerRef =
-    useRef();
-
-  const chartRef =
-    useRef();
-
-  const seriesRef =
     useRef();
 
   const [timeframe, setTimeframe] =
@@ -26,137 +23,209 @@ export default function Chart() {
   useEffect(() => {
 
     const chart = createChart(
+
       chartContainerRef.current,
+
       {
 
         width:
-          chartContainerRef.current.clientWidth,
+          chartContainerRef.current
+            .clientWidth,
 
-        height: 550,
+        height: 600,
 
         layout: {
 
           background: {
-            color: "#0B1120",
+            color: "#071226",
           },
 
-          textColor: "#d1d5db",
+          textColor: "#ffffff",
+
         },
 
         grid: {
 
           vertLines: {
-            color:
-              "rgba(255,255,255,0.05)",
+            color: "#1e293b",
           },
 
           horzLines: {
-            color:
-              "rgba(255,255,255,0.05)",
+            color: "#1e293b",
           },
+
+        },
+
+        crosshair: {
+
+          mode: 1,
+
+        },
+
+        rightPriceScale: {
+
+          borderColor: "#1e293b",
+
+        },
+
+        timeScale: {
+
+          borderColor: "#1e293b",
+
+          timeVisible: true,
+
         },
 
       }
+
     );
 
-    const candlestickSeries =
+    const candleSeries =
       chart.addSeries(
         CandlestickSeries
       );
 
-    chartRef.current = chart;
+    fetchChartData(
+      candleSeries
+    );
 
-    seriesRef.current =
-      candlestickSeries;
+    async function fetchChartData(
+      series
+    ) {
+
+      try {
+
+        // ------------------------------------------------
+        // PERIOD LOGIC
+        // ------------------------------------------------
+
+        let period = "7d";
+
+        if (
+          timeframe === "15m"
+        ) {
+
+          period = "1mo";
+
+        }
+
+        if (
+          timeframe === "30m"
+        ) {
+
+          period = "3mo";
+
+        }
+
+        if (
+          timeframe === "1h"
+        ) {
+
+          period = "6mo";
+
+        }
+
+        if (
+          timeframe === "1d"
+        ) {
+
+          period = "1y";
+
+        }
+
+        // ------------------------------------------------
+        // FETCH
+        // ------------------------------------------------
+
+        const response =
+          await fetch(
+
+            `${API}/nifty-history?interval=${timeframe}&period=${period}`
+
+          );
+
+        const data =
+          await response.json();
+
+        const formatted =
+          data.map((item) => ({
+
+            time: Math.floor(
+
+              new Date(
+                item.time
+              ).getTime() / 1000
+
+            ),
+
+            open: item.open,
+
+            high: item.high,
+
+            low: item.low,
+
+            close: item.close,
+
+          }));
+
+        series.setData(
+          formatted
+        );
+
+        chart.timeScale()
+          .fitContent();
+
+      } catch (error) {
+
+        console.log(error);
+
+      }
+
+    }
+
+    // ------------------------------------------------
+    // RESIZE
+    // ------------------------------------------------
 
     const handleResize = () => {
 
       chart.applyOptions({
 
         width:
-          chartContainerRef.current.clientWidth
+          chartContainerRef.current
+            .clientWidth,
 
-      })
+      });
 
-    }
+    };
 
     window.addEventListener(
       "resize",
       handleResize
-    )
+    );
 
     return () => {
 
       window.removeEventListener(
         "resize",
         handleResize
-      )
+      );
 
-      chart.remove()
+      chart.remove();
 
-    }
-
-  }, []);
-
-  useEffect(() => {
-
-    let period = "5d";
-
-    if (timeframe === "1d") {
-
-      period = "6mo";
-
-    }
-
-    if (timeframe === "1h") {
-
-      period = "1mo";
-
-    }
-
-    fetch(
-      `https://glowing-system-gppw4p9x66vcwxqr-8000.app.github.dev/nifty-history?interval=${timeframe}&period=${period}`
-    )
-
-      .then((response) =>
-        response.json()
-      )
-
-      .then((data) => {
-
-        const formattedData =
-          data.map((candle) => ({
-
-            time: Math.floor(
-              new Date(
-                candle.time
-              ).getTime() / 1000
-            ),
-
-            open: candle.open,
-
-            high: candle.high,
-
-            low: candle.low,
-
-            close: candle.close,
-
-          }));
-
-        seriesRef.current.setData(
-          formattedData
-        );
-
-      });
+    };
 
   }, [timeframe]);
 
   return (
 
-    <div className="w-full">
+    <div className="chart-wrapper">
 
-      {/* TIMEFRAME BUTTONS */}
-      <div className="flex gap-3 mb-5 flex-wrap">
+      <h1>
+        Market Terminal
+      </h1>
+
+      <div className="timeframes">
 
         {[
           "1m",
@@ -164,19 +233,23 @@ export default function Chart() {
           "15m",
           "30m",
           "1h",
-          "1d"
+          "1d",
         ].map((tf) => (
 
           <button
+
             key={tf}
+
+            className={
+              timeframe === tf
+                ? "active-tf"
+                : ""
+            }
+
             onClick={() =>
               setTimeframe(tf)
             }
-            className={`px-4 py-2 rounded-lg text-sm transition ${
-              timeframe === tf
-                ? "bg-blue-500 text-white"
-                : "bg-white/5 hover:bg-white/10"
-            }`}
+
           >
             {tf}
           </button>
@@ -185,13 +258,12 @@ export default function Chart() {
 
       </div>
 
-      {/* CHART */}
       <div
         ref={chartContainerRef}
-        className="w-full"
       />
 
     </div>
 
   );
+
 }

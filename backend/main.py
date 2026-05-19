@@ -4,7 +4,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from datetime import datetime
 import pytz
 import yfinance as yf
-import pandas as pd
 import threading
 import time
 import requests
@@ -324,12 +323,75 @@ def strategy_engine():
 
                     continue
 
-                quantity = 50
+                # ---------------------------------------------------
+                # CAPITAL MANAGEMENT
+                # ---------------------------------------------------
+
+                MAX_CAPITAL = 10000
+
+                LOT_SIZE = 50
+
+                current_invested = sum([
+
+                    p["invested"]
+
+                    for p in positions
+
+                    if p["status"] == "OPEN"
+
+                ])
+
+                remaining_capital = (
+
+                    MAX_CAPITAL
+                    - current_invested
+
+                )
+
+                # ---------------------------------------------------
+                # POSITION SIZE
+                # ---------------------------------------------------
+
+                max_quantity = int(
+
+                    remaining_capital
+                    / live_option_price
+
+                )
+
+                quantity = (
+
+                    max_quantity
+                    // LOT_SIZE
+
+                ) * LOT_SIZE
+
+                # ---------------------------------------------------
+                # SKIP IF NO CAPITAL
+                # ---------------------------------------------------
+
+                if quantity < LOT_SIZE:
+
+                    print(
+                        "NOT ENOUGH CAPITAL"
+                    )
+
+                    time.sleep(30)
+
+                    continue
 
                 invested = round(
-                    live_option_price * quantity,
+
+                    live_option_price
+                    * quantity,
+
                     2
+
                 )
+
+                # ---------------------------------------------------
+                # CREATE POSITION
+                # ---------------------------------------------------
 
                 position = {
 
@@ -377,7 +439,15 @@ def strategy_engine():
 
                 positions.append(position)
 
-                print("NEW LIVE POSITION CREATED")
+                print(
+
+                    f"NEW POSITION CREATED | "
+
+                    f"Qty: {quantity} | "
+
+                    f"Invested: ₹{invested}"
+
+                )
 
             # ---------------------------------------------------
             # UPDATE POSITIONS
@@ -537,6 +607,7 @@ def market_data():
     )
 
     latest = data.iloc[-1]
+
     previous = data.iloc[-2]
 
     nifty_price = round(
@@ -558,31 +629,133 @@ def market_data():
 
     )
 
+    # ---------------------------------------------------
+    # MARKET STATUS
+    # ---------------------------------------------------
+
+    market_open = (
+
+        now.weekday() < 5
+
+        and (
+
+            now.hour > 9
+
+            or (
+                now.hour == 9
+                and now.minute >= 15
+            )
+
+        )
+
+        and (
+
+            now.hour < 15
+
+            or (
+                now.hour == 15
+                and now.minute <= 30
+            )
+
+        )
+
+    )
+
+    market_status = (
+        "OPEN"
+        if market_open
+        else "CLOSED"
+    )
+
+    data_status = (
+        "LIVE"
+        if market_open
+        else "EOD"
+    )
+
+    # ---------------------------------------------------
+    # REAL DAY RANGE
+    # ---------------------------------------------------
+
+    day_low = round(
+        data["Low"].min(),
+        2
+    )
+
+    day_high = round(
+        data["High"].max(),
+        2
+    )
+
+    # ---------------------------------------------------
+    # LIVE VIX
+    # ---------------------------------------------------
+
+    try:
+
+        vix_ticker = yf.Ticker("^INDIAVIX")
+
+        vix_data = vix_ticker.history(
+            period="1d",
+            interval="1m"
+        )
+
+        latest_vix = round(
+            vix_data.iloc[-1]["Close"],
+            2
+        )
+
+        previous_vix = round(
+            vix_data.iloc[-2]["Close"],
+            2
+        )
+
+        vix_change = round(
+
+            (
+                (
+                    latest_vix
+                    - previous_vix
+                )
+                / previous_vix
+            ) * 100,
+
+            2
+
+        )
+
+    except:
+
+        latest_vix = 0
+        vix_change = 0
+
     return {
 
         "nifty_price": nifty_price,
 
         "change_percent": change_percent,
 
-        "vix": 19.5,
+        "vix": latest_vix,
 
-        "vix_change": 1.2,
+        "vix_change": vix_change,
 
-        "pcr": 0.92,
+        "pcr": "LIVE",
 
         "sentiment": (
+
             "Bullish"
             if change_percent >= 0
             else "Bearish"
+
         ),
 
-        "day_low": nifty_price - 150,
+        "day_low": day_low,
 
-        "day_high": nifty_price + 120,
+        "day_high": day_high,
 
-        "market_status": "OPEN",
+        "market_status": market_status,
 
-        "data_status": "LIVE",
+        "data_status": data_status,
 
         "time": now.strftime(
             "%I:%M:%S %p"
@@ -657,7 +830,7 @@ def get_trade_history():
 @app.get("/nifty-history")
 def nifty_history(
     interval: str = "5m",
-    period: str = "1d"
+    period: str = "7d"
 ):
 
     try:
@@ -677,13 +850,21 @@ def nifty_history(
 
                 "time": str(index),
 
-                "open": float(row["Open"]),
+                "open": round(
+                    float(row["Open"]), 2
+                ),
 
-                "high": float(row["High"]),
+                "high": round(
+                    float(row["High"]), 2
+                ),
 
-                "low": float(row["Low"]),
+                "low": round(
+                    float(row["Low"]), 2
+                ),
 
-                "close": float(row["Close"]),
+                "close": round(
+                    float(row["Close"]), 2
+                ),
 
             })
 

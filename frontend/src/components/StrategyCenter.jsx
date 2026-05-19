@@ -3,6 +3,9 @@ import {
   useState
 } from "react"
 
+const API =
+  "https://algo-trading-terminal-production.up.railway.app"
+
 export default function StrategyCenter() {
 
   const [strategyData, setStrategyData] =
@@ -14,7 +17,7 @@ export default function StrategyCenter() {
   useEffect(() => {
 
     fetch(
-      "https://glowing-system-gppw4p9x66vcwxqr-8000.app.github.dev/strategy-data"
+      `${API}/strategy-data`
     )
 
       .then((response) => response.json())
@@ -41,11 +44,15 @@ export default function StrategyCenter() {
 
   }, [])
 
+  // ------------------------------------------------
+  // LOADING
+  // ------------------------------------------------
+
   if (!strategyData) {
 
     return (
 
-      <div className="flex items-center justify-center h-screen bg-[#0B1120] text-white text-xl">
+      <div className="empty-box">
 
         Loading Positions...
 
@@ -55,21 +62,51 @@ export default function StrategyCenter() {
 
   }
 
+  // ------------------------------------------------
+  // EMPTY
+  // ------------------------------------------------
+
   if (strategyData.positions.length === 0) {
 
     return (
 
-      <div className="flex items-center justify-center h-screen bg-[#0B1120] text-white">
+      <div className="strategy-page">
 
-        <div className="text-center">
+        <div className="strategy-summary">
 
-          <h2 className="text-3xl font-bold mb-4">
+          <div className="summary-card">
+
+            <h3>Total Invested</h3>
+
+            <h1>
+              ₹
+              {strategyData.summary.total_invested}
+            </h1>
+
+          </div>
+
+          <div className="summary-card">
+
+            <h3>Live MTM</h3>
+
+            <h1>
+              ₹
+              {strategyData.summary.total_mtm}
+            </h1>
+
+          </div>
+
+        </div>
+
+        <div className="positions-section">
+
+          <h1>Live Positions</h1>
+
+          <div className="empty-box">
+
             No Active Positions
-          </h2>
 
-          <p className="text-gray-400">
-            Waiting for strategy signal...
-          </p>
+          </div>
 
         </div>
 
@@ -79,151 +116,55 @@ export default function StrategyCenter() {
 
   }
 
+  // ------------------------------------------------
+  // UI
+  // ------------------------------------------------
+
   return (
 
-    <div className="flex-1 bg-[#0B1120] text-white overflow-auto p-5">
+    <div className="strategy-page">
 
-      <div className="flex items-center justify-between mb-6">
+      {/* SUMMARY */}
 
-        <div>
+      <div className="strategy-summary">
 
-          <h1 className="text-3xl font-bold">
-            Positions Terminal
+        <div className="summary-card">
+
+          <h3>Total Invested</h3>
+
+          <h1>
+            ₹
+            {strategyData.summary.total_invested}
           </h1>
-
-          <p className="text-gray-400 mt-1 text-sm">
-            Intraday options execution monitor
-          </p>
 
         </div>
 
-        <div className="flex items-center gap-4">
+        <div className="summary-card">
 
-          <div className="bg-[#172033] border border-white/10 px-5 py-3 rounded-xl">
+          <h3>Live MTM</h3>
 
-            <div className="text-xs text-gray-400 mb-1">
-              Total Invested
-            </div>
-
-            <div className="text-xl font-bold">
-              ₹{strategyData.summary.total_invested}
-            </div>
-
-          </div>
-
-          <div className="bg-[#172033] border border-white/10 px-5 py-3 rounded-xl">
-
-            <div className="text-xs text-gray-400 mb-1">
-              Today's MTM
-            </div>
-
-            <div className="text-xl font-bold text-green-400">
-              ₹{strategyData.summary.total_mtm}
-            </div>
-
-          </div>
+          <h1>
+            ₹
+            {strategyData.summary.total_mtm}
+          </h1>
 
         </div>
 
       </div>
 
-      <div className="grid grid-cols-12 gap-5">
+      {/* POSITIONS */}
 
-        <div className="col-span-4 bg-[#172033] border border-white/10 rounded-2xl overflow-hidden">
+      <div className="positions-section">
 
-          <div className="grid grid-cols-5 px-4 py-4 border-b border-white/10 text-xs text-gray-400 font-medium">
+        <h1>Live Positions</h1>
 
-            <div>Symbol</div>
+        <div className="position-card">
 
-            <div>Type</div>
-
-            <div>Expiry</div>
-
-            <div>Qty</div>
-
-            <div>MTM</div>
-
-          </div>
-
-          {strategyData.positions.map((position, index) => (
-
-            <div
-              key={index}
-              onClick={() =>
-                setSelectedPosition(position)
-              }
-              className={`
-                grid grid-cols-5 px-4 py-5 items-center border-b border-white/5 cursor-pointer transition
-                ${
-                  selectedPosition &&
-                  selectedPosition.symbol === position.symbol &&
-                  selectedPosition.strike === position.strike
-                    ? "bg-blue-500/10"
-                    : "hover:bg-white/5"
-                }
-              `}
-            >
-
-              <div>
-
-                <div className="font-semibold">
-                  {position.symbol}
-                </div>
-
-                <div className="text-gray-400 text-xs mt-1">
-                  {position.strike}
-                </div>
-
-              </div>
-
-              <div>
-
-                <span
-                  className={`
-                    px-2 py-1 rounded-lg text-xs font-medium
-                    ${
-                      position.option_type === "CE"
-                        ? "bg-green-500/20 text-green-400"
-                        : "bg-red-500/20 text-red-400"
-                    }
-                  `}
-                >
-                  {position.option_type}
-                </span>
-
-              </div>
-
-              <div className="text-xs text-gray-300">
-                {position.expiry}
-              </div>
-
-              <div>
-                {position.quantity}
-              </div>
-
-              <div
-                className={`font-medium ${
-                  position.mtm.includes("-")
-                    ? "text-red-400"
-                    : "text-green-400"
-                }`}
-              >
-                {position.mtm}
-              </div>
-
-            </div>
-
-          ))}
-
-        </div>
-
-        <div className="col-span-8 bg-[#172033] border border-white/10 rounded-2xl p-6">
-
-          <div className="flex items-center justify-between mb-8">
+          <div className="position-top">
 
             <div>
 
-              <h2 className="text-3xl font-bold">
+              <h2>
 
                 {selectedPosition.symbol}
                 {" "}
@@ -233,125 +174,134 @@ export default function StrategyCenter() {
 
               </h2>
 
-              <p className="text-gray-400 mt-1">
+              <p>
+
                 Expiry:
                 {" "}
                 {selectedPosition.expiry}
+
               </p>
 
             </div>
 
-            <div
-              className={`px-4 py-2 rounded-xl text-sm font-semibold ${
-                selectedPosition.status === "OPEN"
-                  ? "bg-green-500/20 text-green-400"
-                  : "bg-gray-500/20 text-gray-300"
-              }`}
-            >
-              {selectedPosition.status}
+            <div>
+
+              <h3>
+                {selectedPosition.status}
+              </h3>
+
             </div>
 
           </div>
 
-          <div className="grid grid-cols-3 gap-4 mb-8">
+          <div className="position-grid">
 
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
+            <div>
 
-              <div className="text-gray-400 text-xs mb-2">
-                Entry Premium
-              </div>
+              <p>Entry</p>
 
-              <div className="text-2xl font-bold">
-                ₹{selectedPosition.entry_price}
-              </div>
-
-            </div>
-
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
-
-              <div className="text-gray-400 text-xs mb-2">
-                Current Premium
-              </div>
-
-              <div className="text-2xl font-bold">
-                ₹{selectedPosition.current_price}
-              </div>
+              <h3>
+                ₹
+                {selectedPosition.entry_price}
+              </h3>
 
             </div>
 
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
+            <div>
 
-              <div className="text-gray-400 text-xs mb-2">
-                Invested Amount
-              </div>
+              <p>Current</p>
 
-              <div className="text-2xl font-bold">
-                ₹{selectedPosition.invested}
-              </div>
+              <h3>
+                ₹
+                {selectedPosition.current_price}
+              </h3>
 
             </div>
 
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
+            <div>
 
-              <div className="text-gray-400 text-xs mb-2">
-                MTM
-              </div>
+              <p>Invested</p>
 
-              <div
-                className={`text-2xl font-bold ${
-                  selectedPosition.mtm.includes("-")
-                    ? "text-red-400"
-                    : "text-green-400"
-                }`}
-              >
+              <h3>
+                ₹
+                {selectedPosition.invested}
+              </h3>
+
+            </div>
+
+            <div>
+
+              <p>Quantity</p>
+
+              <h3>
+                {selectedPosition.quantity}
+              </h3>
+
+            </div>
+
+            <div>
+
+              <p>MTM</p>
+
+              <h3>
                 {selectedPosition.mtm}
-              </div>
+              </h3>
 
             </div>
 
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
+            <div>
 
-              <div className="text-gray-400 text-xs mb-2">
-                ROI
-              </div>
+              <p>ROI</p>
 
-              <div className="text-2xl font-bold text-green-400">
+              <h3>
                 {selectedPosition.roi}
-              </div>
+              </h3>
 
             </div>
 
-            <div className="bg-[#0B1120] border border-white/10 rounded-xl p-4">
+            <div>
 
-              <div className="text-gray-400 text-xs mb-2">
-                Auto Exit
-              </div>
+              <p>Stop Loss</p>
 
-              <div className="text-2xl font-bold text-yellow-300">
-                3:15 PM
-              </div>
+              <h3>
+                ₹
+                {selectedPosition.stop_loss}
+              </h3>
+
+            </div>
+
+            <div>
+
+              <p>Target</p>
+
+              <h3>
+                ₹
+                {selectedPosition.target}
+              </h3>
 
             </div>
 
           </div>
 
-          <div className="bg-[#0B1120] border border-white/10 rounded-xl p-5">
+          <div className="rationale-box">
 
-            <h3 className="text-xl font-semibold mb-5">
+            <h3>
               Trade Rationale
             </h3>
 
-            <div className="space-y-4 text-sm text-gray-300 leading-7">
+            <ul>
 
-              {selectedPosition.rationale.map((item, index) => (
+              {selectedPosition.rationale.map(
+                (item, index) => (
 
-                <div key={index}>
-                  • {item}
-                </div>
+                  <li key={index}>
+                    {item}
+                  </li>
 
-              ))}
+                )
+              )}
 
-            </div>
+            </ul>
 
           </div>
 

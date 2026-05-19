@@ -1,112 +1,102 @@
-import StrategyCenter from "./components/StrategyCenter"
+import { useEffect, useState } from "react";
+import Chart from "./components/Chart";
+import StrategyCenter from "./components/StrategyCenter";
+import "./App.css";
 
-import {
-  useEffect,
-  useState
-} from 'react'
-
-import Chart from './components/Chart'
+const API =
+  "https://algo-trading-terminal-production.up.railway.app";
 
 export default function App() {
 
   const [marketData, setMarketData] =
-    useState(null)
+    useState(null);
 
   const [activeTab, setActiveTab] =
-    useState("market")
+    useState("market");
 
   useEffect(() => {
 
-    const fetchData = () => {
+    fetchMarketData();
 
-      fetch(
-        "https://glowing-system-gppw4p9x66vcwxqr-8000.app.github.dev/market-data"
-      )
+    const interval = setInterval(() => {
 
-        .then((response) =>
-          response.json()
-        )
+      fetchMarketData();
 
-        .then((data) => {
+    }, 30000);
 
-          setMarketData(data)
+    return () => clearInterval(interval);
 
-        })
+  }, []);
+
+  const fetchMarketData = async () => {
+
+    try {
+
+      const response = await fetch(
+        `${API}/market-data`
+      );
+
+      const data = await response.json();
+
+      setMarketData(data);
+
+    } catch (error) {
+
+      console.log(error);
 
     }
 
-    fetchData()
-
-    const interval =
-      setInterval(
-        fetchData,
-        5000
-      )
-
-    return () =>
-      clearInterval(interval)
-
-  }, [])
+  };
 
   return (
 
-    <div className="min-h-screen bg-[#0B1120] text-white flex overflow-hidden">
+    <div className="app">
 
       {/* SIDEBAR */}
-      <div className="w-64 min-w-64 bg-[#111827] border-r border-white/10 p-5 flex flex-col">
 
-        <div>
+      <div className="sidebar">
 
-          <h1 className="text-2xl font-bold">
-            NIFTY TERMINAL
-          </h1>
+        <h1>NIFTY TERMINAL</h1>
 
-          <p className="text-sm text-gray-400 mt-1">
-            Paper Trading Mode
-          </p>
+        <p>Paper Trading Mode</p>
 
-        </div>
+        <div className="menu">
 
-        <div className="mt-10 space-y-3">
-
-          {/* MARKET TERMINAL */}
           <button
+            className={
+              activeTab === "market"
+                ? "active"
+                : ""
+            }
             onClick={() =>
               setActiveTab("market")
             }
-            className={`w-full text-left px-4 py-3 rounded-xl transition ${
-              activeTab === "market"
-                ? "bg-white/10"
-                : "hover:bg-white/10"
-            }`}
           >
             Market Terminal
           </button>
 
-          {/* STRATEGY CENTER */}
           <button
+            className={
+              activeTab === "strategy"
+                ? "active"
+                : ""
+            }
             onClick={() =>
               setActiveTab("strategy")
             }
-            className={`w-full text-left px-4 py-3 rounded-xl transition ${
-              activeTab === "strategy"
-                ? "bg-white/10"
-                : "hover:bg-white/10"
-            }`}
           >
             Strategy Center
           </button>
 
-          {/* OTHER TABS */}
-          <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/10 transition">
+          <button>
             Positions & PnL
           </button>
 
-          <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/10 transition">
+          <button>
             Risk Monitor
           </button>
 
-          <button className="w-full text-left px-4 py-3 rounded-xl hover:bg-white/10 transition">
+          <button>
             Analytics
           </button>
 
@@ -114,214 +104,159 @@ export default function App() {
 
       </div>
 
-      {/* MAIN AREA */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      {/* MAIN CONTENT */}
 
-        {/* CONDITIONAL PAGE RENDERING */}
-        {
-          activeTab === "market"
+      <div className="main-content">
 
-            ? (
+        {/* TOPBAR */}
 
-              <>
+        <div className="topbar">
 
-                {/* TOP NAVBAR */}
-                <div className="h-16 border-b border-white/10 bg-[#111827]/70 backdrop-blur flex items-center justify-between px-6">
+          <div className="top-left">
 
-                  <div className="flex items-center gap-6">
+            <span>NIFTY</span>
 
-                    <div>
+            <span
+              style={{
+                color:
+                  marketData?.change_percent >= 0
+                    ? "#00ff95"
+                    : "#ff4d4d",
+              }}
+            >
+              {marketData?.change_percent}%
+            </span>
 
-                      <div className="text-sm text-gray-400">
-                        NIFTY
-                      </div>
+            <span>
+              {marketData?.market_status}
+            </span>
 
-                      <div className="font-semibold text-lg">
-                        {marketData?.nifty_price}
-                      </div>
+          </div>
 
-                    </div>
+          <div className="top-right">
 
-                    <div
-                      className={`font-medium ${
-                        marketData?.change_percent >= 0
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      {marketData?.change_percent}%
-                    </div>
+            <span>
+              VIX:
+              {" "}
+              {marketData?.vix}
+            </span>
 
-                    <div
-                      className={`text-sm ${
-                        marketData?.market_status === "OPEN"
-                          ? "text-green-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      Market {marketData?.market_status}
-                    </div>
+            <span>
+              Data:
+              {" "}
+              {marketData?.data_status}
+            </span>
 
-                  </div>
+            <span>
+              {marketData?.time}
+            </span>
 
-                  <div className="flex items-center gap-6 text-sm">
+          </div>
 
-                    <div>
-                      VIX:
-                      {" "}
-                      {marketData?.vix}
-                    </div>
+        </div>
 
-                    <div
-                      className={`${
-                        marketData?.data_status === "DELAYED"
-                          ? "text-yellow-400"
-                          : "text-red-400"
-                      }`}
-                    >
-                      Data:
-                      {" "}
-                      {marketData?.data_status}
-                    </div>
+        {/* MARKET TAB */}
 
-                    <div>
-                      {marketData?.time}
-                    </div>
+        {activeTab === "market" && (
 
-                  </div>
+          <>
 
-                </div>
+            <div className="cards">
 
-                {/* CONTENT */}
-                <div className="p-6 overflow-auto">
+              <div className="card">
 
-                  {/* METRIC CARDS */}
-                  <div className="grid grid-cols-4 gap-4">
+                <h3>NIFTY</h3>
 
-                    {/* NIFTY */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <h1>
+                  {marketData?.nifty_price}
+                </h1>
 
-                      <div className="text-sm text-gray-400">
-                        NIFTY
-                      </div>
+                <p
+                  style={{
+                    color:
+                      marketData?.change_percent >= 0
+                        ? "#00ff95"
+                        : "#ff4d4d",
+                  }}
+                >
+                  {marketData?.change_percent}%
+                </p>
 
-                      <div className="mt-2 text-2xl font-bold">
-                        {marketData?.nifty_price}
-                      </div>
+              </div>
 
-                      <div
-                        className={`mt-1 ${
-                          marketData?.change_percent >= 0
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {marketData?.change_percent}%
-                      </div>
+              <div className="card">
 
-                    </div>
+                <h3>VIX</h3>
 
-                    {/* VIX */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <h1>
+                  {marketData?.vix}
+                </h1>
 
-                      <div className="text-sm text-gray-400">
-                        VIX
-                      </div>
+                <p
+                  style={{
+                    color:
+                      marketData?.vix_change >= 0
+                        ? "#ff4d4d"
+                        : "#00ff95",
+                  }}
+                >
+                  {marketData?.vix_change}%
+                </p>
 
-                      <div className="mt-2 text-2xl font-bold">
-                        {marketData?.vix}
-                      </div>
+              </div>
 
-                      <div
-                        className={`mt-1 ${
-                          marketData?.vix_change >= 0
-                            ? "text-red-400"
-                            : "text-green-400"
-                        }`}
-                      >
-                        {marketData?.vix_change}%
-                      </div>
+              <div className="card">
 
-                    </div>
+                <h3>PCR</h3>
 
-                    {/* PCR */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <h1>
+                  {marketData?.pcr}
+                </h1>
 
-                      <div className="text-sm text-gray-400">
-                        PCR
-                      </div>
+                <p>
+                  {marketData?.sentiment}
+                </p>
 
-                      <div className="mt-2 text-2xl font-bold">
-                        {marketData?.pcr}
-                      </div>
+              </div>
 
-                      <div
-                        className={`mt-1 ${
-                          marketData?.pcr >= 1
-                            ? "text-green-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {marketData?.sentiment}
-                      </div>
+              <div className="card">
 
-                    </div>
+                <h3>DAY RANGE</h3>
 
-                    {/* DAY RANGE */}
-                    <div className="bg-white/5 border border-white/10 rounded-2xl p-5">
+                <h1 style={{ fontSize: "22px" }}>
 
-                      <div className="text-sm text-gray-400">
-                        DAY RANGE
-                      </div>
+                  {marketData?.day_low}
 
-                      <div className="mt-2 text-2xl font-bold">
-                        {marketData?.day_low}
-                        {" - "}
-                        {marketData?.day_high}
-                      </div>
+                  {" - "}
 
-                      <div
-                        className={`mt-1 ${
-                          marketData?.data_status === "DELAYED"
-                            ? "text-yellow-400"
-                            : "text-red-400"
-                        }`}
-                      >
-                        {marketData?.data_status}
-                      </div>
+                  {marketData?.day_high}
 
-                    </div>
+                </h1>
 
-                  </div>
+                <p>LIVE</p>
 
-                  {/* CHART PANEL */}
-                  <div className="mt-6 bg-white/5 border border-white/10 rounded-2xl p-6">
+              </div>
 
-                    <h2 className="text-2xl font-semibold mb-6">
-                      Market Terminal
-                    </h2>
+            </div>
 
-                    <Chart />
+            <Chart />
 
-                  </div>
+          </>
 
-                </div>
+        )}
 
-              </>
+        {/* STRATEGY TAB */}
 
-            )
+        {activeTab === "strategy" && (
 
-            : (
+          <StrategyCenter />
 
-              <StrategyCenter />
-
-            )
-        }
+        )}
 
       </div>
 
     </div>
 
-  )
+  );
 
 }
