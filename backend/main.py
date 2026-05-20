@@ -617,7 +617,8 @@ def market_data():
     )
 
     daily_data = nifty.history(
-        period="5d"
+        period="1mo",
+        interval="1d"
     )
 
     latest_close = intraday_data["Close"].iloc[-1]
@@ -628,7 +629,9 @@ def market_data():
     )
 
     previous_close = round(
-        daily_data["Close"].iloc[-2],
+        daily_data["Close"]
+        .dropna()
+        .iloc[-2],
         2
     )
 
@@ -645,25 +648,30 @@ def market_data():
         2
     )
 
-    # ----------------------------------------
+    # ---------------------------------------------------
     # INDIA VIX
-    # ----------------------------------------
+    # ---------------------------------------------------
 
     try:
 
         vix_ticker = yf.Ticker("^INDIAVIX")
 
         vix_data = vix_ticker.history(
-            period="5d"
+            period="1mo",
+            interval="1d"
         )
 
         latest_vix = round(
-            vix_data["Close"].iloc[-1],
+            vix_data["Close"]
+            .dropna()
+            .iloc[-1],
             2
         )
 
         previous_vix = round(
-            vix_data["Close"].iloc[-2],
+            vix_data["Close"]
+            .dropna()
+            .iloc[-2],
             2
         )
 
