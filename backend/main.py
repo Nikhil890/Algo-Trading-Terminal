@@ -73,7 +73,7 @@ def calculate_rsi(data, period=14):
     return rsi
 
 # ---------------------------------------------------
-# FETCH NIFTY DATA
+# FETCH MARKET DATA
 # ---------------------------------------------------
 
 def fetch_market_data():
@@ -108,7 +108,7 @@ def fetch_option_chain():
     return data
 
 # ---------------------------------------------------
-# GET OPTION PRICE
+# OPTION PRICE
 # ---------------------------------------------------
 
 def get_option_price(
@@ -137,7 +137,7 @@ def get_option_price(
                             2
                         )
 
-                if option_type == "PE":
+                elif option_type == "PE":
 
                     pe = item.get("PE")
 
@@ -165,9 +165,13 @@ def is_market_open():
     current_time = now.strftime("%H:%M")
 
     return (
+
         now.weekday() < 5
+
         and current_time >= "09:15"
+
         and current_time <= "15:30"
+
     )
 
 # ---------------------------------------------------
@@ -195,9 +199,9 @@ def strategy_engine():
 
             today = now.strftime("%Y-%m-%d")
 
-            # ---------------------------------------------------
-            # RESET DAILY TRADE COUNT
-            # ---------------------------------------------------
+            # ----------------------------------------
+            # RESET DAILY LIMIT
+            # ----------------------------------------
 
             if last_trade_day != today:
 
@@ -205,9 +209,9 @@ def strategy_engine():
 
                 last_trade_day = today
 
-            # ---------------------------------------------------
-            # MAX TRADE LIMIT
-            # ---------------------------------------------------
+            # ----------------------------------------
+            # MAX TRADES
+            # ----------------------------------------
 
             if daily_trade_count >= 5:
 
@@ -215,9 +219,9 @@ def strategy_engine():
 
                 continue
 
-            # ---------------------------------------------------
-            # FETCH LIVE DATA
-            # ---------------------------------------------------
+            # ----------------------------------------
+            # FETCH DATA
+            # ----------------------------------------
 
             df = fetch_market_data()
 
@@ -227,9 +231,9 @@ def strategy_engine():
 
                 continue
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # INDICATORS
-            # ---------------------------------------------------
+            # ----------------------------------------
 
             df["EMA9"] = (
                 df["Close"]
@@ -261,12 +265,12 @@ def strategy_engine():
             rsi = latest["RSI"]
 
             signal = None
-            rationale = []
             strategy_name = ""
+            rationale = []
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # EMA STRATEGY
-            # ---------------------------------------------------
+            # ----------------------------------------
 
             if (
                 ema9 > ema21
@@ -306,11 +310,14 @@ def strategy_engine():
 
                 ]
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # ORB STRATEGY
-            # ---------------------------------------------------
+            # ----------------------------------------
 
-            today_df = df[df.index.date == latest.name.date()]
+            today_df = df[
+                df.index.date
+                == latest.name.date()
+            ]
 
             orb_df = today_df.between_time(
                 "09:15",
@@ -357,9 +364,9 @@ def strategy_engine():
 
                     ]
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # ACTIVE POSITIONS
-            # ---------------------------------------------------
+            # ----------------------------------------
 
             active_positions = [
 
@@ -368,9 +375,9 @@ def strategy_engine():
 
             ]
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # CREATE POSITION
-            # ---------------------------------------------------
+            # ----------------------------------------
 
             if signal and len(active_positions) == 0:
 
@@ -379,20 +386,16 @@ def strategy_engine():
                     * 50
                 )
 
-                live_option_price = get_option_price(
+                option_price = get_option_price(
                     strike,
                     signal
                 )
 
-                if not live_option_price:
+                if not option_price:
 
                     time.sleep(30)
 
                     continue
-
-                # ---------------------------------------------------
-                # CAPITAL MANAGEMENT
-                # ---------------------------------------------------
 
                 MAX_CAPITAL = 50000
 
@@ -416,10 +419,8 @@ def strategy_engine():
                 )
 
                 max_quantity = int(
-
                     remaining_capital
-                    / live_option_price
-
+                    / option_price
                 )
 
                 quantity = (
@@ -431,30 +432,24 @@ def strategy_engine():
 
                 if quantity < LOT_SIZE:
 
-                    print(
-                        "NOT ENOUGH CAPITAL"
-                    )
+                    print("NOT ENOUGH CAPITAL")
 
                     time.sleep(30)
 
                     continue
 
                 invested = round(
-
-                    live_option_price
-                    * quantity,
-
+                    option_price * quantity,
                     2
-
                 )
 
                 stop_loss = round(
-                    live_option_price * 0.90,
+                    option_price * 0.90,
                     2
                 )
 
                 target = round(
-                    live_option_price * 1.15,
+                    option_price * 1.15,
                     2
                 )
 
@@ -472,9 +467,9 @@ def strategy_engine():
 
                     "quantity": quantity,
 
-                    "entry_price": live_option_price,
+                    "entry_price": option_price,
 
-                    "current_price": live_option_price,
+                    "current_price": option_price,
 
                     "invested": invested,
 
@@ -506,9 +501,9 @@ def strategy_engine():
                     f"NEW {strategy_name} POSITION CREATED"
                 )
 
-            # ---------------------------------------------------
+            # ----------------------------------------
             # UPDATE POSITIONS
-            # ---------------------------------------------------
+            # ----------------------------------------
 
             for position in positions:
 
@@ -540,8 +535,6 @@ def strategy_engine():
 
                 )
 
-                position["mtm"] = f"₹{pnl}"
-
                 roi = round(
 
                     (
@@ -553,23 +546,23 @@ def strategy_engine():
 
                 )
 
+                position["mtm"] = f"₹{pnl}"
+
                 position["roi"] = f"{roi}%"
 
                 exit_trade = False
                 reason = ""
 
-                if (
-                    live_price
-                    <= position["stop_loss"]
-                ):
+                # ----------------------------------------
+                # EXIT RULES
+                # ----------------------------------------
+
+                if live_price <= position["stop_loss"]:
 
                     exit_trade = True
                     reason = "STOP LOSS HIT"
 
-                elif (
-                    live_price
-                    >= position["target"]
-                ):
+                elif live_price >= position["target"]:
 
                     exit_trade = True
                     reason = "TARGET HIT"
@@ -578,6 +571,10 @@ def strategy_engine():
 
                     exit_trade = True
                     reason = "AUTO EOD EXIT"
+
+                # ----------------------------------------
+                # CLOSE POSITION
+                # ----------------------------------------
 
                 if exit_trade:
 
@@ -651,12 +648,16 @@ def market_data():
 
     nifty = yf.Ticker("^NSEI")
 
-    data = nifty.history(
+    intraday_data = nifty.history(
         period="2d",
         interval="1m"
     )
 
-    latest = data.iloc[-1]
+    daily_data = nifty.history(
+        period="5d"
+    )
+
+    latest = intraday_data.iloc[-1]
 
     nifty_price = round(
         latest["Close"],
@@ -664,7 +665,7 @@ def market_data():
     )
 
     previous_close = round(
-        data.iloc[0]["Close"],
+        daily_data.iloc[-2]["Close"],
         2
     )
 
@@ -685,7 +686,7 @@ def market_data():
     )
 
     # ----------------------------------------
-    # INDIA VIX
+    # VIX
     # ----------------------------------------
 
     try:
@@ -693,8 +694,7 @@ def market_data():
         vix_ticker = yf.Ticker("^INDIAVIX")
 
         vix_data = vix_ticker.history(
-            period="2d",
-            interval="1d"
+            period="5d"
         )
 
         latest_vix = round(
@@ -741,12 +741,12 @@ def market_data():
         "vix_change": vix_change,
 
         "day_low": round(
-            data["Low"].min(),
+            intraday_data["Low"].min(),
             2
         ),
 
         "day_high": round(
-            data["High"].max(),
+            intraday_data["High"].max(),
             2
         ),
 
