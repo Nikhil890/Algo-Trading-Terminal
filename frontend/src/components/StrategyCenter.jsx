@@ -14,7 +14,11 @@ export default function StrategyCenter() {
   const [selectedPosition, setSelectedPosition] =
     useState(null)
 
-  useEffect(() => {
+  // ------------------------------------------------
+  // FETCH DATA
+  // ------------------------------------------------
+
+  const fetchStrategyData = () => {
 
     fetch(
       `${API}/strategy-data`
@@ -26,7 +30,9 @@ export default function StrategyCenter() {
 
         setStrategyData(data)
 
-        if (data.positions.length > 0) {
+        if (
+          data.positions.length > 0
+        ) {
 
           setSelectedPosition(
             data.positions[0]
@@ -42,6 +48,24 @@ export default function StrategyCenter() {
 
       })
 
+  }
+
+  // ------------------------------------------------
+  // LOAD
+  // ------------------------------------------------
+
+  useEffect(() => {
+
+    fetchStrategyData()
+
+    const interval = setInterval(() => {
+
+      fetchStrategyData()
+
+    }, 10000)
+
+    return () => clearInterval(interval)
+
   }, [])
 
   // ------------------------------------------------
@@ -54,7 +78,7 @@ export default function StrategyCenter() {
 
       <div className="empty-box">
 
-        Loading Positions...
+        Loading Strategy Engine...
 
       </div>
 
@@ -72,6 +96,8 @@ export default function StrategyCenter() {
 
       <div className="strategy-page">
 
+        {/* SUMMARY */}
+
         <div className="strategy-summary">
 
           <div className="summary-card">
@@ -79,8 +105,10 @@ export default function StrategyCenter() {
             <h3>Total Invested</h3>
 
             <h1>
+
               ₹
               {strategyData.summary.total_invested}
+
             </h1>
 
           </div>
@@ -90,21 +118,53 @@ export default function StrategyCenter() {
             <h3>Live MTM</h3>
 
             <h1>
+
               ₹
               {strategyData.summary.total_mtm}
+
+            </h1>
+
+          </div>
+
+          <div className="summary-card">
+
+            <h3>Trades Today</h3>
+
+            <h1>
+
+              {strategyData.summary.daily_trade_count}
+
+            </h1>
+
+          </div>
+
+          <div className="summary-card">
+
+            <h3>Trades Remaining</h3>
+
+            <h1>
+
+              {strategyData.summary.remaining_trades}
+
             </h1>
 
           </div>
 
         </div>
 
+        {/* EMPTY */}
+
         <div className="positions-section">
 
-          <h1>Live Positions</h1>
+          <h1>
+
+            Strategy Engine
+
+          </h1>
 
           <div className="empty-box">
 
-            No Active Positions
+            Waiting for live signals...
 
           </div>
 
@@ -133,8 +193,10 @@ export default function StrategyCenter() {
           <h3>Total Invested</h3>
 
           <h1>
+
             ₹
             {strategyData.summary.total_invested}
+
           </h1>
 
         </div>
@@ -144,19 +206,89 @@ export default function StrategyCenter() {
           <h3>Live MTM</h3>
 
           <h1>
+
             ₹
             {strategyData.summary.total_mtm}
+
+          </h1>
+
+        </div>
+
+        <div className="summary-card">
+
+          <h3>Trades Today</h3>
+
+          <h1>
+
+            {strategyData.summary.daily_trade_count}
+
+          </h1>
+
+        </div>
+
+        <div className="summary-card">
+
+          <h3>Trades Remaining</h3>
+
+          <h1>
+
+            {strategyData.summary.remaining_trades}
+
           </h1>
 
         </div>
 
       </div>
 
-      {/* POSITIONS */}
+      {/* POSITION LIST */}
+
+      <div className="positions-list">
+
+        {
+
+          strategyData.positions.map(
+            (position, index) => (
+
+              <button
+
+                key={index}
+
+                className="position-tab"
+
+                onClick={() =>
+                  setSelectedPosition(position)
+                }
+
+              >
+
+                {position.strategy}
+                {" "}
+                |
+                {" "}
+                {position.option_type}
+                {" "}
+                |
+                {" "}
+                {position.strike}
+
+              </button>
+
+            )
+          )
+
+        }
+
+      </div>
+
+      {/* POSITION DETAILS */}
 
       <div className="positions-section">
 
-        <h1>Live Positions</h1>
+        <h1>
+
+          Live Position
+
+        </h1>
 
         <div className="position-card">
 
@@ -187,12 +319,24 @@ export default function StrategyCenter() {
             <div>
 
               <h3>
+
                 {selectedPosition.status}
+
               </h3>
+
+              <p>
+
+                Strategy:
+                {" "}
+                {selectedPosition.strategy}
+
+              </p>
 
             </div>
 
           </div>
+
+          {/* GRID */}
 
           <div className="position-grid">
 
@@ -201,8 +345,10 @@ export default function StrategyCenter() {
               <p>Entry</p>
 
               <h3>
+
                 ₹
                 {selectedPosition.entry_price}
+
               </h3>
 
             </div>
@@ -212,8 +358,10 @@ export default function StrategyCenter() {
               <p>Current</p>
 
               <h3>
+
                 ₹
                 {selectedPosition.current_price}
+
               </h3>
 
             </div>
@@ -223,8 +371,10 @@ export default function StrategyCenter() {
               <p>Invested</p>
 
               <h3>
+
                 ₹
                 {selectedPosition.invested}
+
               </h3>
 
             </div>
@@ -234,7 +384,9 @@ export default function StrategyCenter() {
               <p>Quantity</p>
 
               <h3>
+
                 {selectedPosition.quantity}
+
               </h3>
 
             </div>
@@ -244,7 +396,9 @@ export default function StrategyCenter() {
               <p>MTM</p>
 
               <h3>
+
                 {selectedPosition.mtm}
+
               </h3>
 
             </div>
@@ -254,7 +408,9 @@ export default function StrategyCenter() {
               <p>ROI</p>
 
               <h3>
+
                 {selectedPosition.roi}
+
               </h3>
 
             </div>
@@ -264,8 +420,10 @@ export default function StrategyCenter() {
               <p>Stop Loss</p>
 
               <h3>
+
                 ₹
                 {selectedPosition.stop_loss}
+
               </h3>
 
             </div>
@@ -275,31 +433,43 @@ export default function StrategyCenter() {
               <p>Target</p>
 
               <h3>
+
                 ₹
                 {selectedPosition.target}
+
               </h3>
 
             </div>
 
           </div>
 
+          {/* RATIONALE */}
+
           <div className="rationale-box">
 
             <h3>
+
               Trade Rationale
+
             </h3>
 
             <ul>
 
-              {selectedPosition.rationale.map(
-                (item, index) => (
+              {
 
-                  <li key={index}>
-                    {item}
-                  </li>
+                selectedPosition.rationale.map(
+                  (item, index) => (
 
+                    <li key={index}>
+
+                      {item}
+
+                    </li>
+
+                  )
                 )
-              )}
+
+              }
 
             </ul>
 
