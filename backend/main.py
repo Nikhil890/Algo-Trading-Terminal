@@ -31,6 +31,9 @@ india = pytz.timezone("Asia/Kolkata")
 positions = []
 trade_history = []
 
+daily_trade_count = 0
+last_trade_day = None
+
 # ---------------------------------------------------
 # NSE SESSION
 # ---------------------------------------------------
@@ -78,7 +81,7 @@ def fetch_market_data():
     ticker = yf.Ticker("^NSEI")
 
     data = ticker.history(
-        period="1d",
+        period="5d",
         interval="5m"
     )
 
@@ -152,6 +155,22 @@ def get_option_price(
     return None
 
 # ---------------------------------------------------
+# MARKET STATUS
+# ---------------------------------------------------
+
+def is_market_open():
+
+    now = datetime.now(india)
+
+    current_time = now.strftime("%H:%M")
+
+    return (
+        now.weekday() < 5
+        and current_time >= "09:15"
+        and current_time <= "15:30"
+    )
+
+# ---------------------------------------------------
 # STRATEGY ENGINE
 # ---------------------------------------------------
 
@@ -159,42 +178,38 @@ def strategy_engine():
 
     global positions
     global trade_history
+    global daily_trade_count
+    global last_trade_day
 
     while True:
 
         try:
 
+            if not is_market_open():
+
+                time.sleep(30)
+
+                continue
+
             now = datetime.now(india)
 
-            market_open = (
+            today = now.strftime("%Y-%m-%d")
 
-                now.weekday() < 5
+            # ---------------------------------------------------
+            # RESET DAILY TRADE COUNT
+            # ---------------------------------------------------
 
-                and (
+            if last_trade_day != today:
 
-                    now.hour > 9
+                daily_trade_count = 0
 
-                    or (
-                        now.hour == 9
-                        and now.minute >= 15
-                    )
+                last_trade_day = today
 
-                )
+            # ---------------------------------------------------
+            # MAX TRADE LIMIT
+            # ---------------------------------------------------
 
-                and (
-
-                    now.hour < 15
-
-                    or (
-                        now.hour == 15
-                        and now.minute <= 30
-                    )
-
-                )
-
-            )
-
-            if not market_open:
+            if daily_trade_count >= 5:
 
                 time.sleep(30)
 
@@ -247,17 +262,20 @@ def strategy_engine():
 
             signal = None
             rationale = []
+            strategy_name = ""
 
             # ---------------------------------------------------
-            # SIGNALS
+            # EMA STRATEGY
             # ---------------------------------------------------
 
             if (
                 ema9 > ema21
-                and rsi > 60
+                and rsi > 55
             ):
 
                 signal = "CE"
+
+                strategy_name = "EMA"
 
                 rationale = [
 
@@ -265,18 +283,18 @@ def strategy_engine():
 
                     f"RSI strong at {round(rsi,2)}",
 
-                    "Bullish momentum detected",
-
-                    "Trend confirmation achieved"
+                    "Bullish momentum detected"
 
                 ]
 
             elif (
                 ema9 < ema21
-                and rsi < 40
+                and rsi < 45
             ):
 
                 signal = "PE"
+
+                strategy_name = "EMA"
 
                 rationale = [
 
@@ -284,11 +302,60 @@ def strategy_engine():
 
                     f"RSI weak at {round(rsi,2)}",
 
-                    "Bearish momentum detected",
-
-                    "Trend confirmation achieved"
+                    "Bearish momentum detected"
 
                 ]
+
+            # ---------------------------------------------------
+            # ORB STRATEGY
+            # ---------------------------------------------------
+
+            today_df = df[df.index.date == latest.name.date()]
+
+            orb_df = today_df.between_time(
+                "09:15",
+                "09:30"
+            )
+
+            if len(orb_df) > 0:
+
+                orb_high = orb_df["High"].max()
+
+                orb_low = orb_df["Low"].min()
+
+                latest_close = latest["Close"]
+
+                if latest_close > orb_high:
+
+                    signal = "CE"
+
+                    strategy_name = "ORB"
+
+                    rationale = [
+
+                        "ORB breakout above range",
+
+                        f"ORB High: {round(orb_high,2)}",
+
+                        "Bullish breakout detected"
+
+                    ]
+
+                elif latest_close < orb_low:
+
+                    signal = "PE"
+
+                    strategy_name = "ORB"
+
+                    rationale = [
+
+                        "ORB breakdown below range",
+
+                        f"ORB Low: {round(orb_low,2)}",
+
+                        "Bearish breakdown detected"
+
+                    ]
 
             # ---------------------------------------------------
             # ACTIVE POSITIONS
@@ -327,7 +394,7 @@ def strategy_engine():
                 # CAPITAL MANAGEMENT
                 # ---------------------------------------------------
 
-                MAX_CAPITAL = 10000
+                MAX_CAPITAL = 50000
 
                 LOT_SIZE = 50
 
@@ -348,10 +415,6 @@ def strategy_engine():
 
                 )
 
-                # ---------------------------------------------------
-                # POSITION SIZE
-                # ---------------------------------------------------
-
                 max_quantity = int(
 
                     remaining_capital
@@ -365,10 +428,6 @@ def strategy_engine():
                     // LOT_SIZE
 
                 ) * LOT_SIZE
-
-                # ---------------------------------------------------
-                # SKIP IF NO CAPITAL
-                # ---------------------------------------------------
 
                 if quantity < LOT_SIZE:
 
@@ -390,10 +449,26 @@ def strategy_engine():
                 )
 
                 # ---------------------------------------------------
+                # TARGET + SL
+                # ---------------------------------------------------
+
+                stop_loss = round(
+                    live_option_price * 0.90,
+                    2
+                )
+
+                target = round(
+                    live_option_price * 1.15,
+                    2
+                )
+
+                # ---------------------------------------------------
                 # CREATE POSITION
                 # ---------------------------------------------------
 
                 position = {
+
+                    "strategy": strategy_name,
 
                     "symbol": "NIFTY",
 
@@ -415,15 +490,9 @@ def strategy_engine():
 
                     "roi": "0%",
 
-                    "stop_loss": round(
-                        live_option_price * 0.80,
-                        2
-                    ),
+                    "stop_loss": stop_loss,
 
-                    "target": round(
-                        live_option_price * 1.40,
-                        2
-                    ),
+                    "target": target,
 
                     "status": "OPEN",
 
@@ -439,14 +508,10 @@ def strategy_engine():
 
                 positions.append(position)
 
+                daily_trade_count += 1
+
                 print(
-
-                    f"NEW POSITION CREATED | "
-
-                    f"Qty: {quantity} | "
-
-                    f"Invested: ₹{invested}"
-
+                    f"NEW {strategy_name} POSITION CREATED"
                 )
 
             # ---------------------------------------------------
@@ -521,10 +586,7 @@ def strategy_engine():
                     exit_trade = True
                     reason = "TARGET HIT"
 
-                elif (
-                    now.hour == 15
-                    and now.minute >= 15
-                ):
+                elif not is_market_open():
 
                     exit_trade = True
                     reason = "AUTO EOD EXIT"
@@ -629,105 +691,7 @@ def market_data():
 
     )
 
-    # ---------------------------------------------------
-    # MARKET STATUS
-    # ---------------------------------------------------
-
-    market_open = (
-
-        now.weekday() < 5
-
-        and (
-
-            now.hour > 9
-
-            or (
-                now.hour == 9
-                and now.minute >= 15
-            )
-
-        )
-
-        and (
-
-            now.hour < 15
-
-            or (
-                now.hour == 15
-                and now.minute <= 30
-            )
-
-        )
-
-    )
-
-    market_status = (
-        "OPEN"
-        if market_open
-        else "CLOSED"
-    )
-
-    data_status = (
-        "LIVE"
-        if market_open
-        else "EOD"
-    )
-
-    # ---------------------------------------------------
-    # REAL DAY RANGE
-    # ---------------------------------------------------
-
-    day_low = round(
-        data["Low"].min(),
-        2
-    )
-
-    day_high = round(
-        data["High"].max(),
-        2
-    )
-
-    # ---------------------------------------------------
-    # LIVE VIX
-    # ---------------------------------------------------
-
-    try:
-
-        vix_ticker = yf.Ticker("^INDIAVIX")
-
-        vix_data = vix_ticker.history(
-            period="1d",
-            interval="1m"
-        )
-
-        latest_vix = round(
-            vix_data.iloc[-1]["Close"],
-            2
-        )
-
-        previous_vix = round(
-            vix_data.iloc[-2]["Close"],
-            2
-        )
-
-        vix_change = round(
-
-            (
-                (
-                    latest_vix
-                    - previous_vix
-                )
-                / previous_vix
-            ) * 100,
-
-            2
-
-        )
-
-    except:
-
-        latest_vix = 0
-        vix_change = 0
+    market_open = is_market_open()
 
     return {
 
@@ -735,9 +699,9 @@ def market_data():
 
         "change_percent": change_percent,
 
-        "vix": latest_vix,
+        "vix": 0,
 
-        "vix_change": vix_change,
+        "vix_change": 0,
 
         "pcr": "LIVE",
 
@@ -749,13 +713,27 @@ def market_data():
 
         ),
 
-        "day_low": day_low,
+        "day_low": round(
+            data["Low"].min(),
+            2
+        ),
 
-        "day_high": day_high,
+        "day_high": round(
+            data["High"].max(),
+            2
+        ),
 
-        "market_status": market_status,
+        "market_status": (
+            "OPEN"
+            if market_open
+            else "CLOSED"
+        ),
 
-        "data_status": data_status,
+        "data_status": (
+            "LIVE"
+            if market_open
+            else "EOD"
+        ),
 
         "time": now.strftime(
             "%I:%M:%S %p"
@@ -788,12 +766,10 @@ def strategy_data():
 
             try:
 
-                mtm_value = float(
+                total_mtm += float(
                     p["mtm"]
                     .replace("₹", "")
                 )
-
-                total_mtm += mtm_value
 
             except:
                 pass
@@ -808,7 +784,13 @@ def strategy_data():
             round(total_invested, 2),
 
             "total_mtm":
-            round(total_mtm, 2)
+            round(total_mtm, 2),
+
+            "daily_trade_count":
+            daily_trade_count,
+
+            "remaining_trades":
+            max(0, 5 - daily_trade_count)
 
         }
 
@@ -822,56 +804,3 @@ def strategy_data():
 def get_trade_history():
 
     return trade_history
-
-# ---------------------------------------------------
-# NIFTY HISTORY
-# ---------------------------------------------------
-
-@app.get("/nifty-history")
-def nifty_history(
-    interval: str = "5m",
-    period: str = "7d"
-):
-
-    try:
-
-        ticker = yf.Ticker("^NSEI")
-
-        data = ticker.history(
-            period=period,
-            interval=interval
-        )
-
-        candles = []
-
-        for index, row in data.iterrows():
-
-            candles.append({
-
-                "time": str(index),
-
-                "open": round(
-                    float(row["Open"]), 2
-                ),
-
-                "high": round(
-                    float(row["High"]), 2
-                ),
-
-                "low": round(
-                    float(row["Low"]), 2
-                ),
-
-                "close": round(
-                    float(row["Close"]), 2
-                ),
-
-            })
-
-        return candles
-
-    except Exception as e:
-
-        return {
-            "error": str(e)
-        }
