@@ -621,10 +621,10 @@ def market_data():
         interval="1d"
     )
 
-    latest_close = intraday_data["Close"].iloc[-1]
-
-    nifty_price = round(
-        latest_close,
+    latest_close = round(
+        daily_data["Close"]
+        .dropna()
+        .iloc[-1],
         2
     )
 
@@ -634,6 +634,8 @@ def market_data():
         .iloc[-2],
         2
     )
+
+    nifty_price = latest_close
 
     points_change = round(
         nifty_price - previous_close,
