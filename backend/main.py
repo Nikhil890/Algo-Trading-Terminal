@@ -448,10 +448,6 @@ def strategy_engine():
 
                 )
 
-                # ---------------------------------------------------
-                # TARGET + SL
-                # ---------------------------------------------------
-
                 stop_loss = round(
                     live_option_price * 0.90,
                     2
@@ -461,10 +457,6 @@ def strategy_engine():
                     live_option_price * 1.15,
                     2
                 )
-
-                # ---------------------------------------------------
-                # CREATE POSITION
-                # ---------------------------------------------------
 
                 position = {
 
@@ -497,7 +489,7 @@ def strategy_engine():
                     "status": "OPEN",
 
                     "entry_time": now.strftime(
-                        "%I:%M:%S %p"
+                        "%H:%M:%S"
                     ),
 
                     "rationale": rationale,
@@ -566,10 +558,6 @@ def strategy_engine():
                 exit_trade = False
                 reason = ""
 
-                # ---------------------------------------------------
-                # EXIT RULES
-                # ---------------------------------------------------
-
                 if (
                     live_price
                     <= position["stop_loss"]
@@ -591,10 +579,6 @@ def strategy_engine():
                     exit_trade = True
                     reason = "AUTO EOD EXIT"
 
-                # ---------------------------------------------------
-                # CLOSE POSITION
-                # ---------------------------------------------------
-
                 if exit_trade:
 
                     position["status"] = "CLOSED"
@@ -602,7 +586,7 @@ def strategy_engine():
                     position["exit_reason"] = reason
 
                     position["exit_time"] = now.strftime(
-                        "%I:%M:%S %p"
+                        "%H:%M:%S"
                     )
 
                     position["history"].append({
@@ -661,35 +645,86 @@ def market_data():
 
     now = datetime.now(india)
 
-    ticker = yf.Ticker("^NSEI")
+    # ----------------------------------------
+    # NIFTY
+    # ----------------------------------------
 
-    data = ticker.history(
-        period="1d",
+    nifty = yf.Ticker("^NSEI")
+
+    data = nifty.history(
+        period="2d",
         interval="1m"
     )
 
     latest = data.iloc[-1]
-
-    previous = data.iloc[-2]
 
     nifty_price = round(
         latest["Close"],
         2
     )
 
+    previous_close = round(
+        data.iloc[0]["Close"],
+        2
+    )
+
+    points_change = round(
+        nifty_price - previous_close,
+        2
+    )
+
     change_percent = round(
 
         (
-            (
-                latest["Close"]
-                - previous["Close"]
-            )
-            / previous["Close"]
+            points_change
+            / previous_close
         ) * 100,
 
         2
 
     )
+
+    # ----------------------------------------
+    # INDIA VIX
+    # ----------------------------------------
+
+    try:
+
+        vix_ticker = yf.Ticker("^INDIAVIX")
+
+        vix_data = vix_ticker.history(
+            period="2d",
+            interval="1d"
+        )
+
+        latest_vix = round(
+            vix_data.iloc[-1]["Close"],
+            2
+        )
+
+        previous_vix = round(
+            vix_data.iloc[-2]["Close"],
+            2
+        )
+
+        vix_change = round(
+
+            (
+                (
+                    latest_vix
+                    - previous_vix
+                )
+                / previous_vix
+            ) * 100,
+
+            2
+
+        )
+
+    except:
+
+        latest_vix = 0
+        vix_change = 0
 
     market_open = is_market_open()
 
@@ -697,21 +732,13 @@ def market_data():
 
         "nifty_price": nifty_price,
 
+        "points_change": points_change,
+
         "change_percent": change_percent,
 
-        "vix": 0,
+        "vix": latest_vix,
 
-        "vix_change": 0,
-
-        "pcr": "LIVE",
-
-        "sentiment": (
-
-            "Bullish"
-            if change_percent >= 0
-            else "Bearish"
-
-        ),
+        "vix_change": vix_change,
 
         "day_low": round(
             data["Low"].min(),
@@ -729,15 +756,9 @@ def market_data():
             else "CLOSED"
         ),
 
-        "data_status": (
-            "LIVE"
-            if market_open
-            else "EOD"
-        ),
-
         "time": now.strftime(
-            "%I:%M:%S %p"
-        ),
+            "%H:%M:%S"
+        )
 
     }
 
@@ -784,13 +805,7 @@ def strategy_data():
             round(total_invested, 2),
 
             "total_mtm":
-            round(total_mtm, 2),
-
-            "daily_trade_count":
-            daily_trade_count,
-
-            "remaining_trades":
-            max(0, 5 - daily_trade_count)
+            round(total_mtm, 2)
 
         }
 

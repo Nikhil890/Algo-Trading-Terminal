@@ -124,7 +124,21 @@ export default function App() {
                     : "#ff4d4d",
               }}
             >
+
               {marketData?.change_percent}%
+
+              {" "}
+
+              (
+
+              {marketData?.points_change >= 0
+                ? "+"
+                : ""}
+
+              {marketData?.points_change}
+
+              )
+
             </span>
 
             <span>
@@ -139,12 +153,6 @@ export default function App() {
               VIX:
               {" "}
               {marketData?.vix}
-            </span>
-
-            <span>
-              Data:
-              {" "}
-              {marketData?.data_status}
             </span>
 
             <span>
@@ -163,6 +171,8 @@ export default function App() {
 
             <div className="cards">
 
+              {/* NIFTY */}
+
               <div className="card">
 
                 <h3>NIFTY</h3>
@@ -179,10 +189,26 @@ export default function App() {
                         : "#ff4d4d",
                   }}
                 >
+
                   {marketData?.change_percent}%
+
+                  {" "}
+
+                  (
+
+                  {marketData?.points_change >= 0
+                    ? "+"
+                    : ""}
+
+                  {marketData?.points_change}
+
+                  )
+
                 </p>
 
               </div>
+
+              {/* VIX */}
 
               <div className="card">
 
@@ -200,30 +226,24 @@ export default function App() {
                         : "#00ff95",
                   }}
                 >
+
                   {marketData?.vix_change}%
+
                 </p>
 
               </div>
 
-              <div className="card">
-
-                <h3>PCR</h3>
-
-                <h1>
-                  {marketData?.pcr}
-                </h1>
-
-                <p>
-                  {marketData?.sentiment}
-                </p>
-
-              </div>
+              {/* DAY RANGE */}
 
               <div className="card">
 
                 <h3>DAY RANGE</h3>
 
-                <h1 style={{ fontSize: "22px" }}>
+                <h1
+                  style={{
+                    fontSize: "22px"
+                  }}
+                >
 
                   {marketData?.day_low}
 
@@ -232,8 +252,6 @@ export default function App() {
                   {marketData?.day_high}
 
                 </h1>
-
-                <p>LIVE</p>
 
               </div>
 
