@@ -14,6 +14,10 @@ export default function App() {
   const [activeTab, setActiveTab] =
     useState("market");
 
+  // ----------------------------------------
+  // FETCH MARKET DATA
+  // ----------------------------------------
+
   useEffect(() => {
 
     fetchMarketData();
@@ -47,6 +51,10 @@ export default function App() {
     }
 
   };
+
+  // ----------------------------------------
+  // UI
+  // ----------------------------------------
 
   return (
 
@@ -131,7 +139,7 @@ export default function App() {
 
               (
 
-              {marketData?.points_change >= 0
+              {marketData?.points_change > 0
                 ? "+"
                 : ""}
 
@@ -150,9 +158,35 @@ export default function App() {
           <div className="top-right">
 
             <span>
+
               VIX:
               {" "}
-              {marketData?.vix}
+
+              <span
+                style={{
+                  color:
+                    marketData?.vix_change >= 0
+                      ? "#00ff95"
+                      : "#ff4d4d",
+                }}
+              >
+
+                {marketData?.vix}
+
+                {" "}
+
+                (
+
+                {marketData?.vix_change > 0
+                  ? "+"
+                  : ""}
+
+                {marketData?.vix_change}%
+
+                )
+
+              </span>
+
             </span>
 
             <span>
@@ -196,7 +230,7 @@ export default function App() {
 
                   (
 
-                  {marketData?.points_change >= 0
+                  {marketData?.points_change > 0
                     ? "+"
                     : ""}
 
@@ -222,10 +256,14 @@ export default function App() {
                   style={{
                     color:
                       marketData?.vix_change >= 0
-                        ? "#ff4d4d"
-                        : "#00ff95",
+                        ? "#00ff95"
+                        : "#ff4d4d",
                   }}
                 >
+
+                  {marketData?.vix_change > 0
+                    ? "+"
+                    : ""}
 
                   {marketData?.vix_change}%
 
