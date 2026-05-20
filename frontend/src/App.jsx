@@ -4,7 +4,7 @@ import StrategyCenter from "./components/StrategyCenter";
 import "./App.css";
 
 const API =
-  "https://algo-trading-terminal-production.up.railway.app";
+  "hhttps://algo-trading-terminal-24cs.onrender.com";
 
 export default function App() {
 
