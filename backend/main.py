@@ -80,12 +80,10 @@ def fetch_market_data():
 
     ticker = yf.Ticker("^NSEI")
 
-    data = ticker.history(
+    return ticker.history(
         period="5d",
         interval="5m"
     )
-
-    return data
 
 # ---------------------------------------------------
 # OPTION CHAIN
@@ -103,9 +101,7 @@ def fetch_option_chain():
         headers=headers
     )
 
-    data = response.json()
-
-    return data
+    return response.json()
 
 # ---------------------------------------------------
 # OPTION PRICE
@@ -272,10 +268,7 @@ def strategy_engine():
             # EMA STRATEGY
             # ----------------------------------------
 
-            if (
-                ema9 > ema21
-                and rsi > 55
-            ):
+            if ema9 > ema21 and rsi > 55:
 
                 signal = "CE"
 
@@ -291,10 +284,7 @@ def strategy_engine():
 
                 ]
 
-            elif (
-                ema9 < ema21
-                and rsi < 45
-            ):
+            elif ema9 < ema21 and rsi < 45:
 
                 signal = "PE"
 
@@ -424,10 +414,8 @@ def strategy_engine():
                 )
 
                 quantity = (
-
                     max_quantity
                     // LOT_SIZE
-
                 ) * LOT_SIZE
 
                 if quantity < LOT_SIZE:
@@ -553,10 +541,6 @@ def strategy_engine():
                 exit_trade = False
                 reason = ""
 
-                # ----------------------------------------
-                # EXIT RULES
-                # ----------------------------------------
-
                 if live_price <= position["stop_loss"]:
 
                     exit_trade = True
@@ -572,10 +556,6 @@ def strategy_engine():
                     exit_trade = True
                     reason = "AUTO EOD EXIT"
 
-                # ----------------------------------------
-                # CLOSE POSITION
-                # ----------------------------------------
-
                 if exit_trade:
 
                     position["status"] = "CLOSED"
@@ -585,19 +565,6 @@ def strategy_engine():
                     position["exit_time"] = now.strftime(
                         "%H:%M:%S"
                     )
-
-                    position["history"].append({
-
-                        "entry":
-                        position["entry_price"],
-
-                        "exit":
-                        live_price,
-
-                        "pnl":
-                        f"₹{pnl}"
-
-                    })
 
                     trade_history.append(position)
 
@@ -642,10 +609,6 @@ def market_data():
 
     now = datetime.now(india)
 
-    # ----------------------------------------
-    # NIFTY
-    # ----------------------------------------
-
     nifty = yf.Ticker("^NSEI")
 
     intraday_data = nifty.history(
@@ -657,15 +620,15 @@ def market_data():
         period="5d"
     )
 
-    latest = intraday_data.iloc[-1]
+    latest_close = intraday_data["Close"].iloc[-1]
 
     nifty_price = round(
-        latest["Close"],
+        latest_close,
         2
     )
 
     previous_close = round(
-        daily_data.iloc[-2]["Close"],
+        daily_data["Close"].iloc[-2],
         2
     )
 
@@ -675,18 +638,15 @@ def market_data():
     )
 
     change_percent = round(
-
         (
             points_change
             / previous_close
         ) * 100,
-
         2
-
     )
 
     # ----------------------------------------
-    # VIX
+    # INDIA VIX
     # ----------------------------------------
 
     try:
@@ -698,17 +658,16 @@ def market_data():
         )
 
         latest_vix = round(
-            vix_data.iloc[-1]["Close"],
+            vix_data["Close"].iloc[-1],
             2
         )
 
         previous_vix = round(
-            vix_data.iloc[-2]["Close"],
+            vix_data["Close"].iloc[-2],
             2
         )
 
         vix_change = round(
-
             (
                 (
                     latest_vix
@@ -716,17 +675,13 @@ def market_data():
                 )
                 / previous_vix
             ) * 100,
-
             2
-
         )
 
     except:
 
         latest_vix = 0
         vix_change = 0
-
-    market_open = is_market_open()
 
     return {
 
@@ -752,7 +707,7 @@ def market_data():
 
         "market_status": (
             "OPEN"
-            if market_open
+            if is_market_open()
             else "CLOSED"
         ),
 
