@@ -32,6 +32,7 @@ export default function StrategyCenter() {
 
         if (
           data.positions.length > 0
+          && !selectedPosition
         ) {
 
           setSelectedPosition(
@@ -87,7 +88,45 @@ export default function StrategyCenter() {
   }
 
   // ------------------------------------------------
-  // EMPTY
+  // FILTERS
+  // ------------------------------------------------
+
+  const openPositions =
+    strategyData.positions.filter(
+      (p) => p.status === "OPEN"
+    )
+
+  const closedPositions =
+    strategyData.positions.filter(
+      (p) => p.status === "CLOSED"
+    )
+
+  // ------------------------------------------------
+  // REALIZED PNL
+  // ------------------------------------------------
+
+  let realizedPnl = 0
+
+  closedPositions.forEach((p) => {
+
+    try {
+
+      realizedPnl += parseFloat(
+
+        p.mtm.replace("₹", "")
+
+      )
+
+    } catch {
+
+      realizedPnl += 0
+
+    }
+
+  })
+
+  // ------------------------------------------------
+  // EMPTY STATE
   // ------------------------------------------------
 
   if (strategyData.positions.length === 0) {
@@ -128,23 +167,11 @@ export default function StrategyCenter() {
 
           <div className="summary-card">
 
-            <h3>Trades Today</h3>
+            <h3>Realized PnL</h3>
 
             <h1>
 
-              {strategyData.summary.daily_trade_count}
-
-            </h1>
-
-          </div>
-
-          <div className="summary-card">
-
-            <h3>Trades Remaining</h3>
-
-            <h1>
-
-              {strategyData.summary.remaining_trades}
+              ₹0
 
             </h1>
 
@@ -216,23 +243,12 @@ export default function StrategyCenter() {
 
         <div className="summary-card">
 
-          <h3>Trades Today</h3>
+          <h3>Realized PnL</h3>
 
           <h1>
 
-            {strategyData.summary.daily_trade_count}
-
-          </h1>
-
-        </div>
-
-        <div className="summary-card">
-
-          <h3>Trades Remaining</h3>
-
-          <h1>
-
-            {strategyData.summary.remaining_trades}
+            ₹
+            {realizedPnl.toFixed(2)}
 
           </h1>
 
@@ -240,242 +256,350 @@ export default function StrategyCenter() {
 
       </div>
 
-      {/* POSITION LIST */}
+      {/* OPEN POSITIONS */}
 
-      <div className="positions-list">
+      <div className="positions-section">
+
+        <h1>
+
+          Open Positions
+
+        </h1>
 
         {
 
-          strategyData.positions.map(
-            (position, index) => (
+          openPositions.length === 0 ? (
 
-              <button
+            <div className="empty-box">
 
-                key={index}
+              No Active Positions
 
-                className="position-tab"
+            </div>
 
-                onClick={() =>
-                  setSelectedPosition(position)
-                }
+          ) : (
 
-              >
+            openPositions.map(
+              (position, index) => (
 
-                {position.strategy}
-                {" "}
-                |
-                {" "}
-                {position.option_type}
-                {" "}
-                |
-                {" "}
-                {position.strike}
+                <div
+                  key={index}
+                  className="position-card"
+                >
 
-              </button>
+                  {/* TOP */}
 
+                  <div className="position-top">
+
+                    <div>
+
+                      <h2>
+
+                        {position.symbol}
+                        {" "}
+                        {position.strike}
+                        {" "}
+                        {position.option_type}
+
+                      </h2>
+
+                      <p>
+
+                        Strategy:
+                        {" "}
+                        {position.strategy}
+
+                      </p>
+
+                    </div>
+
+                    <div>
+
+                      <h3>
+
+                        {position.status}
+
+                      </h3>
+
+                    </div>
+
+                  </div>
+
+                  {/* GRID */}
+
+                  <div className="position-grid">
+
+                    <div>
+
+                      <p>Entry</p>
+
+                      <h3>
+
+                        ₹
+                        {position.entry_price}
+
+                      </h3>
+
+                    </div>
+
+                    <div>
+
+                      <p>Current</p>
+
+                      <h3>
+
+                        ₹
+                        {position.current_price}
+
+                      </h3>
+
+                    </div>
+
+                    <div>
+
+                      <p>Invested</p>
+
+                      <h3>
+
+                        ₹
+                        {position.invested}
+
+                      </h3>
+
+                    </div>
+
+                    <div>
+
+                      <p>Quantity</p>
+
+                      <h3>
+
+                        {position.quantity}
+
+                      </h3>
+
+                    </div>
+
+                    <div>
+
+                      <p>MTM</p>
+
+                      <h3>
+
+                        {position.mtm}
+
+                      </h3>
+
+                    </div>
+
+                    <div>
+
+                      <p>ROI</p>
+
+                      <h3>
+
+                        {position.roi}
+
+                      </h3>
+
+                    </div>
+
+                  </div>
+
+                  {/* RATIONALE */}
+
+                  <div className="rationale-box">
+
+                    <h3>
+
+                      Trade Rationale
+
+                    </h3>
+
+                    <ul>
+
+                      {
+
+                        position.rationale.map(
+                          (item, idx) => (
+
+                            <li key={idx}>
+
+                              {item}
+
+                            </li>
+
+                          )
+                        )
+
+                      }
+
+                    </ul>
+
+                  </div>
+
+                </div>
+
+              )
             )
+
           )
 
         }
 
       </div>
 
-      {/* POSITION DETAILS */}
+      {/* CLOSED POSITIONS */}
 
       <div className="positions-section">
 
         <h1>
 
-          Live Position
+          Closed Positions
 
         </h1>
 
-        <div className="position-card">
+        {
 
-          <div className="position-top">
+          closedPositions.length === 0 ? (
 
-            <div>
+            <div className="empty-box">
 
-              <h2>
-
-                {selectedPosition.symbol}
-                {" "}
-                {selectedPosition.strike}
-                {" "}
-                {selectedPosition.option_type}
-
-              </h2>
-
-              <p>
-
-                Expiry:
-                {" "}
-                {selectedPosition.expiry}
-
-              </p>
+              No Closed Trades Yet
 
             </div>
 
-            <div>
+          ) : (
 
-              <h3>
+            closedPositions.map(
+              (position, index) => (
 
-                {selectedPosition.status}
+                <div
+                  key={index}
+                  className="position-card"
+                >
 
-              </h3>
+                  <div className="position-top">
 
-              <p>
+                    <div>
 
-                Strategy:
-                {" "}
-                {selectedPosition.strategy}
+                      <h2>
 
-              </p>
+                        {position.symbol}
+                        {" "}
+                        {position.strike}
+                        {" "}
+                        {position.option_type}
 
-            </div>
+                      </h2>
 
-          </div>
+                      <p>
 
-          {/* GRID */}
+                        Strategy:
+                        {" "}
+                        {position.strategy}
 
-          <div className="position-grid">
+                      </p>
 
-            <div>
+                    </div>
 
-              <p>Entry</p>
+                    <div>
 
-              <h3>
+                      <h3>
 
-                ₹
-                {selectedPosition.entry_price}
+                        {position.exit_reason}
 
-              </h3>
+                      </h3>
 
-            </div>
+                    </div>
 
-            <div>
+                  </div>
 
-              <p>Current</p>
+                  <div className="position-grid">
 
-              <h3>
+                    <div>
 
-                ₹
-                {selectedPosition.current_price}
+                      <p>Entry</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        ₹
+                        {position.entry_price}
 
-            <div>
+                      </h3>
 
-              <p>Invested</p>
+                    </div>
 
-              <h3>
+                    <div>
 
-                ₹
-                {selectedPosition.invested}
+                      <p>Exit</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        ₹
+                        {position.current_price}
 
-            <div>
+                      </h3>
 
-              <p>Quantity</p>
+                    </div>
 
-              <h3>
+                    <div>
 
-                {selectedPosition.quantity}
+                      <p>PnL</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        {position.mtm}
 
-            <div>
+                      </h3>
 
-              <p>MTM</p>
+                    </div>
 
-              <h3>
+                    <div>
 
-                {selectedPosition.mtm}
+                      <p>ROI</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        {position.roi}
 
-            <div>
+                      </h3>
 
-              <p>ROI</p>
+                    </div>
 
-              <h3>
+                    <div>
 
-                {selectedPosition.roi}
+                      <p>Entry Time</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        {position.entry_time}
 
-            <div>
+                      </h3>
 
-              <p>Stop Loss</p>
+                    </div>
 
-              <h3>
+                    <div>
 
-                ₹
-                {selectedPosition.stop_loss}
+                      <p>Exit Time</p>
 
-              </h3>
+                      <h3>
 
-            </div>
+                        {position.exit_time}
 
-            <div>
+                      </h3>
 
-              <p>Target</p>
+                    </div>
 
-              <h3>
+                  </div>
 
-                ₹
-                {selectedPosition.target}
+                </div>
 
-              </h3>
+              )
+            )
 
-            </div>
+          )
 
-          </div>
-
-          {/* RATIONALE */}
-
-          <div className="rationale-box">
-
-            <h3>
-
-              Trade Rationale
-
-            </h3>
-
-            <ul>
-
-              {
-
-                selectedPosition.rationale.map(
-                  (item, index) => (
-
-                    <li key={index}>
-
-                      {item}
-
-                    </li>
-
-                  )
-                )
-
-              }
-
-            </ul>
-
-          </div>
-
-        </div>
+        }
 
       </div>
 
