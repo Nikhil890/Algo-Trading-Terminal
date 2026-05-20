@@ -26,7 +26,7 @@ export default function App() {
 
       fetchMarketData();
 
-    }, 30000);
+    }, 12000);
 
     return () => clearInterval(interval);
 

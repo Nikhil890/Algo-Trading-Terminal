@@ -35,6 +35,13 @@ daily_trade_count = 0
 last_trade_day = None
 
 # ---------------------------------------------------
+# MARKET CACHE
+# ---------------------------------------------------
+
+cached_market_data = {}
+last_market_fetch = 0
+
+# ---------------------------------------------------
 # NSE SESSION
 # ---------------------------------------------------
 
@@ -187,7 +194,7 @@ def strategy_engine():
 
             if not is_market_open():
 
-                time.sleep(30)
+                time.sleep(120)
 
                 continue
 
@@ -211,7 +218,7 @@ def strategy_engine():
 
             if daily_trade_count >= 5:
 
-                time.sleep(30)
+                time.sleep(120)
 
                 continue
 
@@ -223,7 +230,7 @@ def strategy_engine():
 
             if len(df) < 30:
 
-                time.sleep(30)
+                time.sleep(120)
 
                 continue
 
@@ -383,7 +390,7 @@ def strategy_engine():
 
                 if not option_price:
 
-                    time.sleep(30)
+                    time.sleep(120)
 
                     continue
 
@@ -422,7 +429,7 @@ def strategy_engine():
 
                     print("NOT ENOUGH CAPITAL")
 
-                    time.sleep(30)
+                    time.sleep(120)
 
                     continue
 
@@ -570,13 +577,13 @@ def strategy_engine():
 
                     print("POSITION CLOSED")
 
-            time.sleep(30)
+            time.sleep(120)
 
         except Exception as e:
 
             print("ENGINE ERROR:", e)
 
-            time.sleep(30)
+            time.sleep(120)
 
 # ---------------------------------------------------
 # START ENGINE
@@ -607,125 +614,185 @@ def root():
 @app.get("/market-data")
 def market_data():
 
+    global cached_market_data
+    global last_market_fetch
+
+    current_timestamp = time.time()
+
+    # ----------------------------------------
+    # CACHE FOR 60 SECONDS
+    # ----------------------------------------
+
+    if (
+        cached_market_data
+        and current_timestamp - last_market_fetch < 60
+    ):
+
+        return cached_market_data
+
     now = datetime.now(india)
-
-    nifty = yf.Ticker("^NSEI")
-
-    intraday_data = nifty.history(
-        period="2d",
-        interval="1m"
-    )
-
-    daily_data = nifty.history(
-        period="1mo",
-        interval="1d"
-    )
-
-    latest_close = round(
-        daily_data["Close"]
-        .dropna()
-        .iloc[-1],
-        2
-    )
-
-    previous_close = round(
-        daily_data["Close"]
-        .dropna()
-        .iloc[-2],
-        2
-    )
-
-    nifty_price = latest_close
-
-    points_change = round(
-        nifty_price - previous_close,
-        2
-    )
-
-    change_percent = round(
-        (
-            points_change
-            / previous_close
-        ) * 100,
-        2
-    )
-
-    # ---------------------------------------------------
-    # INDIA VIX
-    # ---------------------------------------------------
 
     try:
 
-        vix_ticker = yf.Ticker("^INDIAVIX")
+        # ----------------------------------------
+        # NIFTY DATA
+        # ----------------------------------------
 
-        vix_data = vix_ticker.history(
+        nifty = yf.Ticker("^NSEI")
+
+        intraday_data = nifty.history(
+            period="2d",
+            interval="1m"
+        )
+
+        daily_data = nifty.history(
             period="1mo",
             interval="1d"
         )
 
-        latest_vix = round(
-            vix_data["Close"]
+        latest_close = round(
+            daily_data["Close"]
             .dropna()
             .iloc[-1],
             2
         )
 
-        previous_vix = round(
-            vix_data["Close"]
+        previous_close = round(
+            daily_data["Close"]
             .dropna()
             .iloc[-2],
             2
         )
 
-        vix_change = round(
+        nifty_price = latest_close
+
+        points_change = round(
+            nifty_price - previous_close,
+            2
+        )
+
+        change_percent = round(
             (
-                (
-                    latest_vix
-                    - previous_vix
-                )
-                / previous_vix
+                points_change
+                / previous_close
             ) * 100,
             2
         )
 
-    except:
+        # ----------------------------------------
+        # INDIA VIX
+        # ----------------------------------------
 
-        latest_vix = 0
-        vix_change = 0
+        try:
 
-    return {
+            vix_ticker = yf.Ticker("^INDIAVIX")
 
-        "nifty_price": nifty_price,
+            vix_data = vix_ticker.history(
+                period="1mo",
+                interval="1d"
+            )
 
-        "points_change": points_change,
+            latest_vix = round(
+                vix_data["Close"]
+                .dropna()
+                .iloc[-1],
+                2
+            )
 
-        "change_percent": change_percent,
+            previous_vix = round(
+                vix_data["Close"]
+                .dropna()
+                .iloc[-2],
+                2
+            )
 
-        "vix": latest_vix,
+            vix_change = round(
+                (
+                    (
+                        latest_vix
+                        - previous_vix
+                    )
+                    / previous_vix
+                ) * 100,
+                2
+            )
 
-        "vix_change": vix_change,
+        except Exception as e:
 
-        "day_low": round(
-            intraday_data["Low"].min(),
-            2
-        ),
+            print("VIX ERROR:", e)
 
-        "day_high": round(
-            intraday_data["High"].max(),
-            2
-        ),
+            latest_vix = 0
+            vix_change = 0
 
-        "market_status": (
-            "OPEN"
-            if is_market_open()
-            else "CLOSED"
-        ),
+        cached_market_data = {
 
-        "time": now.strftime(
-            "%H:%M:%S"
-        )
+            "nifty_price": nifty_price,
 
-    }
+            "points_change": points_change,
+
+            "change_percent": change_percent,
+
+            "vix": latest_vix,
+
+            "vix_change": vix_change,
+
+            "day_low": round(
+                intraday_data["Low"].min(),
+                2
+            ),
+
+            "day_high": round(
+                intraday_data["High"].max(),
+                2
+            ),
+
+            "market_status": (
+                "OPEN"
+                if is_market_open()
+                else "CLOSED"
+            ),
+
+            "time": now.strftime(
+                "%H:%M:%S"
+            )
+
+        }
+
+        last_market_fetch = current_timestamp
+
+        return cached_market_data
+
+    except Exception as e:
+
+        print("MARKET DATA ERROR:", e)
+
+        if cached_market_data:
+
+            return cached_market_data
+
+        return {
+
+            "nifty_price": 0,
+
+            "points_change": 0,
+
+            "change_percent": 0,
+
+            "vix": 0,
+
+            "vix_change": 0,
+
+            "day_low": 0,
+
+            "day_high": 0,
+
+            "market_status": "CLOSED",
+
+            "time": now.strftime(
+                "%H:%M:%S"
+            )
+
+        }
 
 # ---------------------------------------------------
 # STRATEGY DATA
